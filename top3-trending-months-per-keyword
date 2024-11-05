@@ -1,0 +1,93 @@
+#view top 3 trending months from semrush trends data via keyword export
+import pandas as pd
+import numpy as np
+from datetime import datetime
+
+def load_data(file_path):
+    # Load SEMrush keyword data (assuming CSV or Excel)
+    if file_path.endswith('.csv'):
+        df = pd.read_csv(file_path)
+    else:
+        df = pd.read_excel(file_path)
+
+    # Check if expected columns exist; adjust column names if needed
+    expected_columns = ['Keyword', 'Search Volume', 'Trends', 'Position', 'URL', 'Keyword Intents']
+    for col in expected_columns:
+        if col not in df.columns:
+            raise ValueError(f"Column '{col}' not found in data.")
+   
+    return df
+
+def process_trends(df, top_n=3):
+    # Get the current month number (1 for January, 2 for February, ..., 12 for December)
+    current_month = datetime.now().month
+    current_year = datetime.now().year
+
+    # List to store keywords and their top N months
+    trends_by_keyword = []
+
+    for _, row in df.iterrows():
+        keyword = row['Keyword']
+        try:
+            # Parse the 'Trends' column, converting the string representation of a list to an actual list of integers
+            trend_data = list(map(int, row['Trends'].strip("[]").split(',')))  # Convert trend data to a list of integers
+            if len(trend_data) != 12:
+                # Skip this keyword if it doesn't have exactly 12 trend values
+                continue
+        except:
+            # Skip this keyword if there is any error in parsing
+            continue
+
+        # Determine the months, counting backwards from the current month
+        months = [(current_month - i - 1) % 12 + 1 for i in range(12)]
+        months = months[::-1]  # Reverse to match the order in trend_data
+
+        # Get the top N months (highest trend values) in descending order
+        top_n_indices = np.argsort(trend_data)[-top_n:][::-1]  # Get the indices of the top N trend values, sorted from highest to lowest
+        top_n_months = [(months[i], trend_data[i]) for i in top_n_indices]
+
+        # Prepare the output for this keyword with top N months
+        top_months_data = [f"{datetime(current_year, month[0], 1).strftime('%B')} ({month[1]})" for month in top_n_months]
+
+        # Prepare dictionary to add to the result
+        keyword_data = {
+            'Keyword': keyword,
+            'Search Volume': row['Search Volume'],
+            'Position': row['Position'],
+            'URL': row['URL'],  # Include the full URL from input
+            'Keyword Intents': row['Keyword Intents']
+        }
+
+        # Assign top N months to separate columns
+        for i in range(top_n):
+            keyword_data[f'Top Month {i+1}'] = top_months_data[i] if i < len(top_months_data) else ""
+
+        trends_by_keyword.append(keyword_data)
+
+    return trends_by_keyword
+
+def generate_output(trends_by_keyword, output_path):
+    # Create a DataFrame from the processed data
+    df = pd.DataFrame(trends_by_keyword)
+
+    # Save the data to an Excel file or CSV file
+    if output_path.endswith('.csv'):
+        df.to_csv(output_path, index=False)
+    else:
+        df.to_excel(output_path, index=False)
+   
+    print(f"Output saved to {output_path}")
+
+# Main function
+def main(file_path, output_path, top_n=3):
+    df = load_data(file_path)
+    trends_by_keyword = process_trends(df, top_n)
+    generate_output(trends_by_keyword, output_path)
+
+# Usage example:
+# Provide the SEMrush export file path and the desired output file path (e.g., 'calendar.xlsx')
+file_path = 'YOURCSV.csv' # Replace with your SEMrush export file path
+output_path = 'top3_trends_per_keyword.xlsx'  # Desired output path for top N months
+top_n = 3  # Number of top months you want to track
+
+main(file_path, output_path, top_n)
