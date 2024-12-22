@@ -1,0 +1,75 @@
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+
+# Load excel file into dataframe
+df = pd.read_excel('insert-here.xlsx')
+
+# Define function to extract text from HTML
+def extract_text(soup):
+    return soup.get_text().strip()
+
+# Define function to extract h1 heading from HTML
+def extract_h1(soup):
+    h1 = soup.find('h1')
+    if h1:
+        return h1.text.strip()
+    return ''
+
+# Define function to extract meta title from HTML
+def extract_meta_title(soup):
+    meta_title = soup.find('meta', {'name': 'title'})
+    if meta_title and 'content' in meta_title.attrs:
+        return meta_title['content'].strip()
+    return ''
+
+# Define function to extract HTML title tag
+def extract_html_title(soup):
+    title = soup.find('title')
+    if title:
+        return title.text.strip()
+    return ''
+
+# Define function to extract meta description from HTML
+def extract_meta_description(soup):
+    meta_description = soup.find('meta', {'name': 'description'})
+    if meta_description and 'content' in meta_description.attrs:
+        return meta_description['content'].strip()
+    return ''
+
+# Define function to extract HTML description tag
+def extract_html_description(soup):
+    description = soup.find('description')
+    if description:
+        return description.text.strip()
+    return ''
+
+# Loop through each row in the dataframe and check whether the keyword is present in the text, h1, title, meta title, description, and meta description
+for index, row in df.iterrows():
+    url = row['URL']
+    keyword = row['Keyword']
+    res = requests.get(url)
+    soup = BeautifulSoup(res.text, 'html.parser')
+    text = extract_text(soup)
+    h1_text = extract_h1(soup)
+    meta_title = extract_meta_title(soup)
+    html_title = extract_html_title(soup)
+    meta_description = extract_meta_description(soup)
+    html_description = extract_html_description(soup)
+    
+    keyword_in_text = keyword.lower() in text.lower()
+    keyword_in_h1 = keyword.lower() in h1_text.lower()
+    keyword_in_meta_title = keyword.lower() in meta_title.lower()
+    keyword_in_html_title = keyword.lower() in html_title.lower()
+    keyword_in_meta_description = keyword.lower() in meta_description.lower()
+    keyword_in_html_description = keyword.lower() in html_description.lower()
+    
+    df.at[index, 'Keyword in Text'] = keyword_in_text
+    df.at[index, 'Keyword in H1'] = keyword_in_h1
+    df.at[index, 'Keyword in Meta Title'] = keyword_in_meta_title
+    df.at[index, 'Keyword in HTML Title'] = keyword_in_html_title
+    df.at[index, 'Keyword in Meta Description'] = keyword_in_meta_description
+    df.at[index, 'Keyword in HTML Description'] = keyword_in_html_description
+
+# Save results to excel file using 'xlsxwriter' engine
+df.to_excel("DE Competitve GAP results.xlsx", index=False, engine='xlsxwriter')
