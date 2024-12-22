@@ -1,0 +1,30 @@
+import pandas as pd
+import requests
+from bs4 import BeautifulSoup
+
+def count_keyword_occurrences(url, keyword):
+    try:
+        # Send a GET request to retrieve the HTML content of the URL
+        response = requests.get(url)
+        response.raise_for_status()
+
+        # Parse the HTML content
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        # Find all occurrences of the keyword in the HTML content
+        occurrences = soup.body.text.lower().count(keyword.lower())
+
+        return occurrences
+    except requests.exceptions.RequestException:
+        return 'Error: Failed to fetch URL'
+
+
+# Read the Excel file with URLs and the keyword
+df = pd.read_excel('Athens keywords test5.xlsx')
+
+# Create new columns to store the keyword occurrences for each URL
+df['Keyword Occurrences A'] = df.apply(lambda row: count_keyword_occurrences(row['URL A'], row['Keyword']), axis=1)
+df['Keyword Occurrences B'] = df.apply(lambda row: count_keyword_occurrences(row['URL B'], row['Keyword']), axis=1)
+
+# Export the updated DataFrame to a new Excel file
+df.to_excel('output_data.xlsx', index=False)
