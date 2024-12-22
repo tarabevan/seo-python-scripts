@@ -72,4 +72,4 @@ for index, row in df.iterrows():
     df.at[index, 'Keyword in HTML Description'] = keyword_in_html_description
 
 # Save results to excel file using 'xlsxwriter' engine
-df.to_excel("DE Competitve GAP results.xlsx", index=False, engine='xlsxwriter')
+df.to_excel("Output.xlsx", index=False, engine='xlsxwriter')
