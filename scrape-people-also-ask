@@ -1,0 +1,96 @@
+#requires creating an excel of keywords and concatenating the new google string in search to queries, placing them back in the script. 
+#Also checking the div class via inspect over people also ask and update in script if changed.
+
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+
+def scrape_results(url, div_class):
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    }
+
+    try:
+        response = requests.get(url, headers=headers)
+        response.raise_for_status()
+
+        soup = BeautifulSoup(response.content, 'html.parser')
+        results = soup.find_all('div', class_=div_class)
+
+        all_results = []
+        for result in results:
+            row_data = [item.get_text(strip=True) for item in result.find_all('div')]
+            all_results.extend([(url, data) for data in row_data])
+
+        return all_results
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching {url}: {e}")
+        return []
+
+def crawl_and_export_excel(urls, div_class):
+    all_results = []
+
+    for url in urls:
+        results = scrape_results(url, div_class)
+        all_results.extend(results)
+
+    # Create a DataFrame with the results
+    df = pd.DataFrame(all_results, columns=['URL', 'Text'])
+
+    # Remove duplicate rows
+    df.drop_duplicates(inplace=True)
+
+    # Exclude rows where 'Text' contains 'feedback', is blank, includes more than one '?' in a cell, or contains 'people also ask'
+    df = df[~df['Text'].str.contains('feedback', case=False, na=False)]
+    df = df[~df['Text'].str.contains('people also ask', case=False, na=False)]
+    df = df[df['Text'].str.count('\?') <= 1]
+
+    # Exclude rows where 'Text' is blank
+    df = df[df['Text'].astype(bool)]
+
+    try:
+        # Save the DataFrame to an Excel file with each div element on a new row and each text occurrence in different rows
+        df.to_excel('scraped_results.xlsx', index=False)
+        print("Results exported to 'scraped_results.xlsx'")
+    except Exception as e:
+        print(f"Error exporting to Excel: {e}")
+
+# Example usage:
+if __name__ == "__main__":
+    urls_to_crawl = [
+         'https://www.google.com/search?q=dresses&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=jumpsuits&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=petite&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=sale+dresses&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=new+dresses&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=sale+petite&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=sale&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=midi+dresses&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=tops&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=occasionwear&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=all&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=tailoring&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=sale+tops&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=co+ords&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=blouses&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=skirts&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=maxi+dresses&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=sale+skirts+trousers&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=workwear&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=sale+knitwear&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=sale+jumpsuits&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=knitwear&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=daywear&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=coats&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=sale+holiday&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=new+skirts&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=denim&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=trousers&rlz=1C1CHBF_enGB',
+ 'https://www.google.com/search?q=new+jumpers+cardigans&rlz=1C1CHBF_enGB'
+        # Add more URLs as needed
+    ]
+
+    div_class_to_scrape = 'Wt5Tfe'  # Replace with the actual div class
+
+    crawl_and_export_excel(urls_to_crawl, div_class_to_scrape)
+
